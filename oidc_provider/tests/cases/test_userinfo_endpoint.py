@@ -73,8 +73,8 @@ class UserInfoTestCase(TestCase):
         # Test a valid request to the userinfo endpoint.
         response = self._post_request(token.access_token)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(bool(response.content), True)
+        assert response.status_code == 200
+        assert bool(response.content) is True
 
     def test_response_with_valid_token_lowercase_bearer(self):
         """
@@ -85,8 +85,8 @@ class UserInfoTestCase(TestCase):
 
         response = self._post_request(token.access_token, schema="bearer")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(bool(response.content), True)
+        assert response.status_code == 200
+        assert bool(response.content) is True
 
     def test_response_with_expired_token(self):
         token = self._create_token()
@@ -97,13 +97,13 @@ class UserInfoTestCase(TestCase):
 
         response = self._post_request(token.access_token)
 
-        self.assertEqual(response.status_code, 401)
+        assert response.status_code == 401
 
         try:
             is_header_field_ok = "invalid_token" in response["WWW-Authenticate"]
         except KeyError:
             is_header_field_ok = False
-        self.assertEqual(is_header_field_ok, True)
+        assert is_header_field_ok is True
 
     def test_response_with_invalid_scope(self):
         token = self._create_token()
@@ -113,13 +113,13 @@ class UserInfoTestCase(TestCase):
 
         response = self._post_request(token.access_token)
 
-        self.assertEqual(response.status_code, 403)
+        assert response.status_code == 403
 
         try:
             is_header_field_ok = "insufficient_scope" in response["WWW-Authenticate"]
         except KeyError:
             is_header_field_ok = False
-        self.assertEqual(is_header_field_ok, True)
+        assert is_header_field_ok is True
 
     def test_accesstoken_query_string_parameter(self):
         """
@@ -141,25 +141,23 @@ class UserInfoTestCase(TestCase):
         request = self.factory.get(url)
         response = userinfo(request)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(bool(response.content), True)
+        assert response.status_code == 200
+        assert bool(response.content) is True
 
     def test_user_claims_in_response(self):
         token = self._create_token(extra_scope=["profile"])
         response = self._post_request(token.access_token)
         response_dic = json.loads(response.content.decode("utf-8"))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(bool(response.content), True)
-        self.assertIn("given_name", response_dic, msg='"given_name" claim should be in response.')
-        self.assertNotIn("profile", response_dic, msg='"profile" claim should not be in response.')
+        assert response.status_code == 200
+        assert bool(response.content) is True
+        assert "given_name" in response_dic, '"given_name" claim should be in response.'
+        assert "profile" not in response_dic, '"profile" claim should not be in response.'
 
         # Now adding `address` scope.
         token = self._create_token(extra_scope=["profile", "address"])
         response = self._post_request(token.access_token)
         response_dic = json.loads(response.content.decode("utf-8"))
 
-        self.assertIn("address", response_dic, msg='"address" claim should be in response.')
-        self.assertIn(
-            "country", response_dic["address"], msg='"country" claim should be in response.'
-        )
+        assert "address" in response_dic, '"address" claim should be in response.'
+        assert "country" in response_dic["address"], '"country" claim should be in response.'

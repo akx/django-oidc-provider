@@ -1,3 +1,4 @@
+import pytest
 from datetime import datetime
 
 try:
@@ -94,8 +95,8 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
         """
         response = self._auth_request("get")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(bool(response.content), True)
+        assert response.status_code == 200
+        assert bool(response.content) is True
 
     def test_invalid_response_type(self):
         """
@@ -115,11 +116,11 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("get", data)
 
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.has_header("Location"), True)
+        assert response.status_code == 302
+        assert response.has_header("Location") is True
 
         # Should be an 'error' component in query.
-        self.assertIn("error=", response["Location"])
+        assert "error=" in response["Location"]
 
     def test_passing_request_parameters_as_jwt_not_supported(self):
         """
@@ -140,11 +141,11 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("get", data)
 
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.has_header("Location"), True)
+        assert response.status_code == 302
+        assert response.has_header("Location") is True
 
         # Should be an 'error' component in query.
-        self.assertIn("error=request_not_supported", response["Location"])
+        assert "error=request_not_supported" in response["Location"]
 
     def test_user_not_logged(self):
         """
@@ -164,7 +165,7 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
         response = self._auth_request("get", data)
 
         # Check if user was redirected to the login view.
-        self.assertIn(settings.get("OIDC_LOGIN_URL"), response["Location"])
+        assert settings.get("OIDC_LOGIN_URL") in response["Location"]
 
     def test_user_consent_inputs(self):
         """
@@ -201,7 +202,7 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         for key, value in iter(to_check.items()):
             is_input_ok = input_html.format(key, value) in response.content.decode("utf-8")
-            self.assertEqual(is_input_ok, True, msg='Hidden input for "' + key + '" fails.')
+            assert is_input_ok is True, ('Hidden input for "' + key) + '" fails.'
 
     def test_user_consent_response(self):
         """
@@ -230,10 +231,8 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         # Because user doesn't allow app, SHOULD exists an error parameter
         # in the query.
-        self.assertIn("error=", response["Location"], msg="error param is missing in query.")
-        self.assertIn(
-            "access_denied", response["Location"], msg='"access_denied" code is missing in query.'
-        )
+        assert "error=" in response["Location"], "error param is missing in query."
+        assert "access_denied" in response["Location"], '"access_denied" code is missing in query.'
 
         # Simulate user authorization.
         data["allow"] = "Accept"  # Will be the value of the button.
@@ -243,11 +242,11 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
         is_code_ok = is_code_valid(
             url=response["Location"], user=self.user, client=self.client_code
         )
-        self.assertEqual(is_code_ok, True, msg="Code returned is invalid.")
+        assert is_code_ok is True, "Code returned is invalid."
 
         # Check if the state is returned.
         state = (response["Location"].split("state="))[1].split("&")[0]
-        self.assertEqual(state, self.state, msg="State change or is missing.")
+        assert state == self.state, "State change or is missing."
 
     def test_user_consent_skipped(self):
         """
@@ -270,14 +269,14 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("post", data, is_user_authenticated=True)
 
-        self.assertIn("code", response["Location"], msg="Code is missing in the returned url.")
+        assert "code" in response["Location"], "Code is missing in the returned url."
 
         response = self._auth_request("post", data, is_user_authenticated=True)
 
         is_code_ok = is_code_valid(
             url=response["Location"], user=self.user, client=self.client_with_no_consent
         )
-        self.assertEqual(is_code_ok, True, msg="Code returned is invalid.")
+        assert is_code_ok is True, "Code returned is invalid."
 
         del data["allow"]
         response = self._auth_request("get", data, is_user_authenticated=True)
@@ -285,7 +284,7 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
         is_code_ok = is_code_valid(
             url=response["Location"], user=self.user, client=self.client_with_no_consent
         )
-        self.assertEqual(is_code_ok, True, msg="Code returned is invalid or missing.")
+        assert is_code_ok is True, "Code returned is invalid or missing."
 
     def test_response_uri_is_properly_constructed(self):
         """
@@ -306,22 +305,19 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
         parsed = urlsplit(response["Location"])
         params = parse_qs(parsed.query or parsed.fragment)
         state = params["state"][0]
-        self.assertEqual(self.state, state, msg="State returned is invalid or missing")
+        assert self.state == state, "State returned is invalid or missing"
 
         is_code_ok = is_code_valid(
             url=response["Location"], user=self.user, client=self.client_code
         )
-        self.assertTrue(is_code_ok, msg="Code returned is invalid or missing")
+        assert is_code_ok, "Code returned is invalid or missing"
 
-        self.assertEqual(
-            set(params.keys()),
-            {"state", "code"},
-            msg="More than state or code appended as query params",
+        assert set(params.keys()) == {"state", "code"}, (
+            "More than state or code appended as query params"
         )
 
-        self.assertTrue(
-            response["Location"].startswith(self.client_code.default_redirect_uri),
-            msg="Different redirect_uri returned",
+        assert response["Location"].startswith(self.client_code.default_redirect_uri), (
+            "Different redirect_uri returned"
         )
 
     def test_unknown_redirect_uris_are_rejected(self):
@@ -338,9 +334,7 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
         }
 
         response = self._auth_request("get", data)
-        self.assertIn(
-            RedirectUriError.error, response.content.decode("utf-8"), msg="No redirect_uri error"
-        )
+        assert RedirectUriError.error in response.content.decode("utf-8"), "No redirect_uri error"
 
     def test_manipulated_redirect_uris_are_rejected(self):
         """
@@ -356,9 +350,7 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
         }
 
         response = self._auth_request("get", data)
-        self.assertIn(
-            RedirectUriError.error, response.content.decode("utf-8"), msg="No redirect_uri error"
-        )
+        assert RedirectUriError.error in response.content.decode("utf-8"), "No redirect_uri error"
 
     def test_public_client_auto_approval(self):
         """
@@ -375,7 +367,7 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("get", data, is_user_authenticated=True)
 
-        self.assertIn("Request for Permission", response.content.decode("utf-8"))
+        assert "Request for Permission" in response.content.decode("utf-8")
 
     def test_prompt_none_parameter(self):
         """
@@ -395,13 +387,13 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
         response = self._auth_request("get", data)
 
         # An error is returned if an End-User is not already authenticated.
-        self.assertIn("login_required", response["Location"])
+        assert "login_required" in response["Location"]
 
         response = self._auth_request("get", data, is_user_authenticated=True)
 
         # An error is returned if the Client does not have pre-configured
         # consent for the requested Claims.
-        self.assertIn("consent_required", response["Location"])
+        assert "consent_required" in response["Location"]
 
     @patch("oidc_provider.views.django_user_logout")
     def test_prompt_login_parameter(self, logout_patched):
@@ -420,20 +412,16 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
         }
 
         response = self._auth_request("get", data)
-        self.assertIn(settings.get("OIDC_LOGIN_URL"), response["Location"])
-        self.assertNotIn(
-            quote("prompt=login"),
-            response["Location"],
-            "Found prompt=login, this leads to infinite login loop.",
+        assert settings.get("OIDC_LOGIN_URL") in response["Location"]
+        assert quote("prompt=login") not in response["Location"], (
+            "Found prompt=login, this leads to infinite login loop."
         )
 
         response = self._auth_request("get", data, is_user_authenticated=True)
-        self.assertIn(settings.get("OIDC_LOGIN_URL"), response["Location"])
+        assert settings.get("OIDC_LOGIN_URL") in response["Location"]
         logout_patched.assert_called_once()
-        self.assertNotIn(
-            quote("prompt=login"),
-            response["Location"],
-            "Found prompt=login, this leads to infinite login loop.",
+        assert quote("prompt=login") not in response["Location"], (
+            "Found prompt=login, this leads to infinite login loop."
         )
 
     def test_prompt_login_none_parameter(self):
@@ -452,10 +440,10 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
         }
 
         response = self._auth_request("get", data)
-        self.assertIn("login_required", response["Location"])
+        assert "login_required" in response["Location"]
 
         response = self._auth_request("get", data, is_user_authenticated=True)
-        self.assertIn("login_required", response["Location"])
+        assert "login_required" in response["Location"]
 
     @patch("oidc_provider.views.render")
     def test_prompt_consent_parameter(self, render_patched):
@@ -474,11 +462,11 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
         }
 
         response = self._auth_request("get", data)
-        self.assertIn(settings.get("OIDC_LOGIN_URL"), response["Location"])
+        assert settings.get("OIDC_LOGIN_URL") in response["Location"]
 
         response = self._auth_request("get", data, is_user_authenticated=True)
         render_patched.assert_called_once()
-        self.assertTrue(render_patched.call_args[0][1], settings.get("OIDC_TEMPLATES")["authorize"])
+        assert render_patched.call_args[0][1], settings.get("OIDC_TEMPLATES")["authorize"]
 
     def test_prompt_consent_none_parameter(self):
         """
@@ -496,10 +484,10 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
         }
 
         response = self._auth_request("get", data)
-        self.assertIn("login_required", response["Location"])
+        assert "login_required" in response["Location"]
 
         response = self._auth_request("get", data, is_user_authenticated=True)
-        self.assertIn("consent_required", response["Location"])
+        assert "consent_required" in response["Location"]
 
     @patch("oidc_provider.views.django_user_logout")
     @freeze_time("2024-01-20 00:00:00", tz_offset=0, as_kwarg="frozen_time")
@@ -525,7 +513,7 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("get", data, is_user_authenticated=True)
 
-        self.assertIn(settings.get("OIDC_LOGIN_URL"), response["Location"])
+        assert settings.get("OIDC_LOGIN_URL") in response["Location"]
         logout_patched.assert_called_once()
 
     @freeze_time("2024-01-20 00:00:00", tz_offset=0, as_kwarg="frozen_time")
@@ -552,7 +540,7 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         logout_patched.assert_not_called()
         render_patched.assert_called_once()
-        self.assertTrue(render_patched.call_args[0][1], settings.get("OIDC_TEMPLATES")["authorize"])
+        assert render_patched.call_args[0][1], settings.get("OIDC_TEMPLATES")["authorize"]
 
     def test_strip_prompt_login(self):
         """
@@ -568,20 +556,20 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
             + "=http://localhost:8000"
         )
 
-        self.assertNotIn("prompt", strip_prompt_login(path0))
+        assert "prompt" not in strip_prompt_login(path0)
 
-        self.assertIn("prompt", strip_prompt_login(path1))
-        self.assertIn("consent", strip_prompt_login(path1))
-        self.assertIn("none", strip_prompt_login(path1))
-        self.assertNotIn("login", strip_prompt_login(path1))
+        assert "prompt" in strip_prompt_login(path1)
+        assert "consent" in strip_prompt_login(path1)
+        assert "none" in strip_prompt_login(path1)
+        assert "login" not in strip_prompt_login(path1)
 
-        self.assertIn("prompt", strip_prompt_login(path2))
-        self.assertIn("consent", strip_prompt_login(path1))
-        self.assertNotIn("login", strip_prompt_login(path2))
+        assert "prompt" in strip_prompt_login(path2)
+        assert "consent" in strip_prompt_login(path1)
+        assert "login" not in strip_prompt_login(path2)
 
-        self.assertIn("prompt", strip_prompt_login(path3))
-        self.assertIn("none", strip_prompt_login(path3))
-        self.assertNotIn("login", strip_prompt_login(path3))
+        assert "prompt" in strip_prompt_login(path3)
+        assert "none" in strip_prompt_login(path3)
+        assert "login" not in strip_prompt_login(path3)
 
     def test_client_id_with_null_char_are_rejected(self):
         """
@@ -599,9 +587,9 @@ class AuthorizationCodeFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("get", data)
 
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
-        self.assertIn("Client ID Error", response.content.decode("utf-8"))
+        assert "Client ID Error" in response.content.decode("utf-8")
 
 
 class AuthorizationImplicitFlowTestCase(TestCase, AuthorizeEndpointMixin):
@@ -640,7 +628,7 @@ class AuthorizationImplicitFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("get", data, is_user_authenticated=True)
 
-        self.assertIn("#error=invalid_request", response["Location"])
+        assert "#error=invalid_request" in response["Location"]
 
     def test_idtoken_token_response(self):
         """
@@ -659,8 +647,8 @@ class AuthorizationImplicitFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("post", data, is_user_authenticated=True)
 
-        self.assertIn("access_token", response["Location"])
-        self.assertIn("id_token", response["Location"])
+        assert "access_token" in response["Location"]
+        assert "id_token" in response["Location"]
 
         # same for public client
         data["client_id"] = (self.client_public.client_id,)
@@ -669,8 +657,8 @@ class AuthorizationImplicitFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("post", data, is_user_authenticated=True)
 
-        self.assertIn("access_token", response["Location"])
-        self.assertIn("id_token", response["Location"])
+        assert "access_token" in response["Location"]
+        assert "id_token" in response["Location"]
 
     def test_idtoken_response(self):
         """
@@ -689,8 +677,8 @@ class AuthorizationImplicitFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("post", data, is_user_authenticated=True)
 
-        self.assertNotIn("access_token", response["Location"])
-        self.assertIn("id_token", response["Location"])
+        assert "access_token" not in response["Location"]
+        assert "id_token" in response["Location"]
 
         # same for public client
         data["client_id"] = (self.client_public_no_access.client_id,)
@@ -699,8 +687,8 @@ class AuthorizationImplicitFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("post", data, is_user_authenticated=True)
 
-        self.assertNotIn("access_token", response["Location"])
-        self.assertIn("id_token", response["Location"])
+        assert "access_token" not in response["Location"]
+        assert "id_token" in response["Location"]
 
     def test_idtoken_token_at_hash(self):
         """
@@ -719,14 +707,14 @@ class AuthorizationImplicitFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("post", data, is_user_authenticated=True)
 
-        self.assertIn("id_token", response["Location"])
+        assert "id_token" in response["Location"]
 
         # obtain `id_token` portion of Location
         components = urlsplit(response["Location"])
         fragment = parse_qs(components[4])
         id_token = jwt.decode(fragment["id_token"][0], options={"verify_signature": False})
 
-        self.assertIn("at_hash", id_token)
+        assert "at_hash" in id_token
 
     def test_idtoken_at_hash(self):
         """
@@ -745,14 +733,14 @@ class AuthorizationImplicitFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("post", data, is_user_authenticated=True)
 
-        self.assertIn("id_token", response["Location"])
+        assert "id_token" in response["Location"]
 
         # obtain `id_token` portion of Location
         components = urlsplit(response["Location"])
         fragment = parse_qs(components[4])
         id_token = jwt.decode(fragment["id_token"][0], options={"verify_signature": False})
 
-        self.assertNotIn("at_hash", id_token)
+        assert "at_hash" not in id_token
 
     def test_public_client_implicit_auto_approval(self):
         """
@@ -769,12 +757,12 @@ class AuthorizationImplicitFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("get", data, is_user_authenticated=True)
         response_text = response.content.decode("utf-8")
-        self.assertEqual(response_text, "")
+        assert response_text == ""
         components = urlsplit(response["Location"])
         fragment = parse_qs(components[4])
-        self.assertIn("access_token", fragment)
-        self.assertIn("id_token", fragment)
-        self.assertIn("expires_in", fragment)
+        assert "access_token" in fragment
+        assert "id_token" in fragment
+        assert "expires_in" in fragment
 
     def test_multiple_response_types(self):
         """
@@ -792,16 +780,16 @@ class AuthorizationImplicitFlowTestCase(TestCase, AuthorizeEndpointMixin):
 
         response = self._auth_request("post", data, is_user_authenticated=True)
 
-        self.assertNotIn("access_token", response["Location"])
-        self.assertIn("id_token", response["Location"])
+        assert "access_token" not in response["Location"]
+        assert "id_token" in response["Location"]
 
         # should also support "id_token token" response_type
         data["response_type"] = "id_token token"
 
         response = self._auth_request("post", data, is_user_authenticated=True)
 
-        self.assertIn("access_token", response["Location"])
-        self.assertIn("id_token", response["Location"])
+        assert "access_token" in response["Location"]
+        assert "id_token" in response["Location"]
 
 
 class AuthorizationHybridFlowTestCase(TestCase, AuthorizeEndpointMixin):
@@ -837,17 +825,17 @@ class AuthorizationHybridFlowTestCase(TestCase, AuthorizeEndpointMixin):
         """
         response = self._auth_request("post", self.data, is_user_authenticated=True)
 
-        self.assertIn("#", response["Location"])
-        self.assertIn("access_token", response["Location"])
-        self.assertIn("id_token", response["Location"])
-        self.assertIn("state", response["Location"])
-        self.assertIn("code", response["Location"])
+        assert "#" in response["Location"]
+        assert "access_token" in response["Location"]
+        assert "id_token" in response["Location"]
+        assert "state" in response["Location"]
+        assert "code" in response["Location"]
 
         # Validate code.
         is_code_ok = is_code_valid(
             url=response["Location"], user=self.user, client=self.client_code_idtoken_token
         )
-        self.assertEqual(is_code_ok, True, msg="Code returned is invalid.")
+        assert is_code_ok is True, "Code returned is invalid."
 
     @override_settings(OIDC_TOKEN_EXPIRE=36000)
     def test_access_token_expiration(self):
@@ -856,7 +844,7 @@ class AuthorizationHybridFlowTestCase(TestCase, AuthorizeEndpointMixin):
         """
         response = self._auth_request("post", self.data, is_user_authenticated=True)
 
-        self.assertIn("expires_in=36000", response["Location"])
+        assert "expires_in=36000" in response["Location"]
 
 
 class TestCreateResponseURI(TestCase):
@@ -891,7 +879,7 @@ class TestCreateResponseURI(TestCase):
         authorization_endpoint = AuthorizeEndpoint(self.request)
         authorization_endpoint.validate_params()
 
-        with self.assertRaises(Exception):
+        with pytest.raises(Exception):
             authorization_endpoint.create_response_uri()
 
         log_exception.assert_called_once_with(
@@ -907,4 +895,4 @@ class TestCreateResponseURI(TestCase):
         authorization_endpoint.validate_params()
 
         uri = authorization_endpoint.create_response_uri()
-        self.assertIn("session_state=", uri)
+        assert "session_state=" in uri

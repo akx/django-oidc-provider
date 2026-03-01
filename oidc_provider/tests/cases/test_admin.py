@@ -31,14 +31,14 @@ class ClientFormTest(TestCase):
         }
 
         form = ClientForm(data=form_data)
-        self.assertTrue(form.is_valid(), f"Form errors: {form.errors}")
+        assert form.is_valid(), f"Form errors: {form.errors}"
 
         # The form should generate a client_id
         client_id = form.clean_client_id()
-        self.assertIsNotNone(client_id)
-        self.assertEqual(len(client_id), 6)
-        self.assertTrue(client_id.isdigit())
-        self.assertTrue(1 <= int(client_id) <= 999999)
+        assert client_id is not None
+        assert len(client_id) == 6
+        assert client_id.isdigit()
+        assert 1 <= int(client_id) <= 999999
 
     def test_creates_client_with_custom_client_id_preserves_it(self):
         """Test that providing a custom client_id preserves it for new clients."""
@@ -62,11 +62,11 @@ class ClientFormTest(TestCase):
 
         # Test updating existing client
         form = ClientForm(data=form_data, instance=client)
-        self.assertTrue(form.is_valid(), f"Form errors: {form.errors}")
+        assert form.is_valid(), f"Form errors: {form.errors}"
 
         # Should return the sanitized version of existing client_id
         client_id = form.clean_client_id()
-        self.assertEqual(client_id, "custom-client-123")
+        assert client_id == "custom-client-123"
 
     def test_sanitizes_existing_client_id_with_control_characters(self):
         """Test that existing client_id with control characters gets sanitized."""
@@ -91,8 +91,9 @@ class ClientFormTest(TestCase):
         }
 
         form = ClientForm(data=form_data, instance=client)
-        self.assertTrue(form.is_valid(), f"Form errors: {form.errors}")
+        assert form.is_valid(), f"Form errors: {form.errors}"
 
         # Should return sanitized client_id
         client_id = form.clean_client_id()
-        self.assertEqual(client_id, "clienttest")  # Control characters removed
+        assert client_id == "clienttest"
+        # Control characters removed

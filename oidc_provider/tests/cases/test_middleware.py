@@ -33,14 +33,12 @@ class MiddlewareTestCase(TestCase):
     def test_session_management_middleware_sets_cookie_on_response(self):
         response = self.client.get("/test/")
 
-        self.assertIn("op_browser_state", response.cookies)
-        self.assertEqual(
-            response.cookies["op_browser_state"].value, str(self.mock_get_state.return_value)
-        )
+        assert "op_browser_state" in response.cookies
+        assert response.cookies["op_browser_state"].value == str(self.mock_get_state.return_value)
         self.mock_get_state.assert_called_once_with(response.wsgi_request)
 
     @override_settings(OIDC_SESSION_MANAGEMENT_ENABLE=False)
     def test_session_management_middleware_does_not_set_cookie_if_session_management_disabled(self):
         response = self.client.get("/test/")
 
-        self.assertNotIn("op_browser_state", response.cookies)
+        assert "op_browser_state" not in response.cookies

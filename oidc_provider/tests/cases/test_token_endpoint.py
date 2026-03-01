@@ -1,3 +1,4 @@
+import pytest
 import json
 import time
 import uuid
@@ -183,8 +184,8 @@ class TokenTestCase(TestCase):
 
         response_dict = json.loads(response.content.decode("utf-8"))
 
-        self.assertEqual(400, response.status_code)
-        self.assertEqual("unsupported_grant_type", response_dict["error"])
+        assert response.status_code == 400
+        assert response_dict["error"] == "unsupported_grant_type"
 
     @override_settings(OIDC_GRANT_TYPE_PASSWORD_ENABLE=True)
     def test_password_grant_get_access_token_without_scope(self):
@@ -196,7 +197,7 @@ class TokenTestCase(TestCase):
         )
 
         response_dict = json.loads(response.content.decode("utf-8"))
-        self.assertIn("access_token", response_dict)
+        assert "access_token" in response_dict
 
     @override_settings(OIDC_GRANT_TYPE_PASSWORD_ENABLE=True)
     def test_password_grant_get_access_token_with_scope(self):
@@ -205,7 +206,7 @@ class TokenTestCase(TestCase):
         )
 
         response_dict = json.loads(response.content.decode("utf-8"))
-        self.assertIn("access_token", response_dict)
+        assert "access_token" in response_dict
 
     @override_settings(OIDC_GRANT_TYPE_PASSWORD_ENABLE=True)
     def test_password_grant_get_access_token_invalid_user_credentials(self):
@@ -218,8 +219,8 @@ class TokenTestCase(TestCase):
 
         response_dict = json.loads(response.content.decode("utf-8"))
 
-        self.assertEqual(403, response.status_code)
-        self.assertEqual("access_denied", response_dict["error"])
+        assert response.status_code == 403
+        assert response_dict["error"] == "access_denied"
 
     def test_password_grant_get_access_token_invalid_client_credentials(self):
         self.client.client_id = "foo"
@@ -231,8 +232,8 @@ class TokenTestCase(TestCase):
 
         response_dict = json.loads(response.content.decode("utf-8"))
 
-        self.assertEqual(400, response.status_code)
-        self.assertEqual("invalid_client", response_dict["error"])
+        assert response.status_code == 400
+        assert response_dict["error"] == "invalid_client"
 
     def test_password_grant_full_response(self):
         self.check_password_grant(scope=["openid", "email"])
@@ -255,12 +256,12 @@ class TokenTestCase(TestCase):
         id_token = decode_id_token(response_dict["id_token"], self.client)
 
         token = Token.objects.get(user=self.user)
-        self.assertEqual(response_dict["access_token"], token.access_token)
-        self.assertEqual(response_dict["refresh_token"], token.refresh_token)
-        self.assertEqual(response_dict["expires_in"], 120)
-        self.assertEqual(response_dict["token_type"], "bearer")
-        self.assertEqual(id_token["sub"], str(self.user.id))
-        self.assertEqual(id_token["aud"], self.client.client_id)
+        assert response_dict["access_token"] == token.access_token
+        assert response_dict["refresh_token"] == token.refresh_token
+        assert response_dict["expires_in"] == 120
+        assert response_dict["token_type"] == "bearer"
+        assert id_token["sub"] == str(self.user.id)
+        assert id_token["aud"] == self.client.client_id
 
         # Check the scope is honored by checking the claims in the userinfo
         userinfo_response = self._get_userinfo(response_dict["access_token"])
@@ -268,9 +269,9 @@ class TokenTestCase(TestCase):
 
         for scope_param, claim in [("email", "email"), ("profile", "name")]:
             if scope_param in scope:
-                self.assertIn(claim, userinfo)
+                assert claim in userinfo
             else:
-                self.assertNotIn(claim, userinfo)
+                assert claim not in userinfo
 
     @override_settings(
         OIDC_GRANT_TYPE_PASSWORD_ENABLE=True,
@@ -282,7 +283,7 @@ class TokenTestCase(TestCase):
         )
 
         response_dict = json.loads(response.content.decode("utf-8"))
-        self.assertIn("access_token", response_dict)
+        assert "access_token" in response_dict
 
     @override_settings(OIDC_TOKEN_EXPIRE=720)
     def test_authorization_code(self):
@@ -301,12 +302,12 @@ class TokenTestCase(TestCase):
         id_token = decode_id_token(response_dic["id_token"], self.client)
 
         token = Token.objects.get(user=self.user)
-        self.assertEqual(response_dic["access_token"], token.access_token)
-        self.assertEqual(response_dic["refresh_token"], token.refresh_token)
-        self.assertEqual(response_dic["token_type"], "bearer")
-        self.assertEqual(response_dic["expires_in"], 720)
-        self.assertEqual(id_token["sub"], str(self.user.id))
-        self.assertEqual(id_token["aud"], self.client.client_id)
+        assert response_dic["access_token"] == token.access_token
+        assert response_dic["refresh_token"] == token.refresh_token
+        assert response_dic["token_type"] == "bearer"
+        assert response_dic["expires_in"] == 720
+        assert id_token["sub"] == str(self.user.id)
+        assert id_token["aud"] == self.client.client_id
 
     @override_settings(OIDC_TOKEN_EXPIRE=720)
     def test_authorization_code_cant_be_reused(self):
@@ -322,9 +323,9 @@ class TokenTestCase(TestCase):
             response = self._post_request(post_data)
             select_for_update_func.assert_called_once()
 
-        self.assertEqual(response.status_code, 400)
+        assert response.status_code == 400
         response_dic = json.loads(response.content.decode("utf-8"))
-        self.assertEqual(response_dic["error"], "invalid_grant")
+        assert response_dic["error"] == "invalid_grant"
 
     @override_settings(OIDC_TOKEN_EXPIRE=720, OIDC_IDTOKEN_INCLUDE_CLAIMS=True)
     def test_scope_is_ignored_for_auth_code(self):
@@ -340,20 +341,20 @@ class TokenTestCase(TestCase):
             response = self._post_request(post_data)
             response_dic = json.loads(response.content.decode("utf-8"))
 
-            self.assertEqual(response.status_code, 200)
+            assert response.status_code == 200
 
             id_token = decode_id_token(response_dic["id_token"], self.client)
 
             if "email" in code_scope:
-                self.assertIn("email", id_token)
-                self.assertIn("email_verified", id_token)
+                assert "email" in id_token
+                assert "email_verified" in id_token
             else:
-                self.assertNotIn("email", id_token)
+                assert "email" not in id_token
 
             if "profile" in code_scope:
-                self.assertIn("given_name", id_token)
+                assert "given_name" in id_token
             else:
-                self.assertNotIn("given_name", id_token)
+                assert "given_name" not in id_token
 
     def test_refresh_token(self):
         """
@@ -387,7 +388,7 @@ class TokenTestCase(TestCase):
     def do_refresh_token_check(self, scope=None):
         # Retrieve refresh token
         code = self._create_code()
-        self.assertEqual(code.scope, TokenTestCase.SCOPE_LIST)
+        assert code.scope == TokenTestCase.SCOPE_LIST
         post_data = self._auth_code_post_data(code=code.code)
         start_time = time.time()
         with patch("oidc_provider.lib.utils.token.time.time") as time_func:
@@ -406,9 +407,10 @@ class TokenTestCase(TestCase):
         response_dic2 = json.loads(response.content.decode("utf-8"))
 
         if scope and set(scope) - set(code.scope):  # too broad scope
-            self.assertEqual(response.status_code, 400)  # Bad Request
-            self.assertIn("error", response_dic2)
-            self.assertEqual(response_dic2["error"], "invalid_scope")
+            assert response.status_code == 400
+            # Bad Request
+            assert "error" in response_dic2
+            assert response_dic2["error"] == "invalid_scope"
             return  # No more checks
 
         id_token2 = decode_id_token(response_dic2["id_token"], self.client)
@@ -416,43 +418,43 @@ class TokenTestCase(TestCase):
         if scope and "email" not in scope:  # narrowed scope The auth
             # The auth code request had email in scope, so it should be
             # in the first id token
-            self.assertIn("email", id_token1)
+            assert "email" in id_token1
             # but the refresh request had no email in scope
-            self.assertNotIn("email", id_token2, "email was not requested")
+            assert "email" not in id_token2, "email was not requested"
 
-        self.assertNotEqual(response_dic1["id_token"], response_dic2["id_token"])
-        self.assertNotEqual(response_dic1["access_token"], response_dic2["access_token"])
-        self.assertNotEqual(response_dic1["refresh_token"], response_dic2["refresh_token"])
+        assert response_dic1["id_token"] != response_dic2["id_token"]
+        assert response_dic1["access_token"] != response_dic2["access_token"]
+        assert response_dic1["refresh_token"] != response_dic2["refresh_token"]
 
         # http://openid.net/specs/openid-connect-core-1_0.html#rfc.section.12.2
-        self.assertEqual(id_token1["iss"], id_token2["iss"])
-        self.assertEqual(id_token1["sub"], id_token2["sub"])
-        self.assertNotEqual(id_token1["iat"], id_token2["iat"])
-        self.assertEqual(id_token1["iat"], int(start_time))
-        self.assertEqual(id_token2["iat"], int(start_time + 600))
-        self.assertEqual(id_token1["aud"], id_token2["aud"])
-        self.assertEqual(id_token1["auth_time"], id_token2["auth_time"])
-        self.assertEqual(id_token1.get("azp"), id_token2.get("azp"))
+        assert id_token1["iss"] == id_token2["iss"]
+        assert id_token1["sub"] == id_token2["sub"]
+        assert id_token1["iat"] != id_token2["iat"]
+        assert id_token1["iat"] == int(start_time)
+        assert id_token2["iat"] == int((start_time + 600))
+        assert id_token1["aud"] == id_token2["aud"]
+        assert id_token1["auth_time"] == id_token2["auth_time"]
+        assert id_token1.get("azp") == id_token2.get("azp")
 
         # Refresh token can't be reused
         post_data = self._refresh_token_post_data(response_dic1["refresh_token"])
         response = self._post_request(post_data)
-        self.assertIn("invalid_grant", response.content.decode("utf-8"))
+        assert "invalid_grant" in response.content.decode("utf-8")
 
         # Old access token is invalidated
-        self.assertEqual(self._get_userinfo(response_dic1["access_token"]).status_code, 401)
-        self.assertEqual(self._get_userinfo(response_dic2["access_token"]).status_code, 200)
+        assert self._get_userinfo(response_dic1["access_token"]).status_code == 401
+        assert self._get_userinfo(response_dic2["access_token"]).status_code == 200
 
         # Empty refresh token is invalid
         post_data = self._refresh_token_post_data("")
         response = self._post_request(post_data)
-        self.assertIn("invalid_grant", response.content.decode("utf-8"))
+        assert "invalid_grant" in response.content.decode("utf-8")
 
         # No refresh token is invalid
         post_data = self._refresh_token_post_data("")
         del post_data["refresh_token"]
         response = self._post_request(post_data)
-        self.assertIn("invalid_grant", response.content.decode("utf-8"))
+        assert "invalid_grant" in response.content.decode("utf-8")
 
     def test_client_redirect_uri(self):
         """
@@ -468,19 +470,19 @@ class TokenTestCase(TestCase):
         post_data["redirect_uri"] = "http://invalid.example.org"
 
         response = self._post_request(post_data)
-        self.assertIn("invalid_client", response.content.decode("utf-8"))
+        assert "invalid_client" in response.content.decode("utf-8")
 
         # Registered URI, but with query string appended
         post_data["redirect_uri"] = self.client.default_redirect_uri + "?foo=bar"
 
         response = self._post_request(post_data)
-        self.assertIn("invalid_client", response.content.decode("utf-8"))
+        assert "invalid_client" in response.content.decode("utf-8")
 
         # Registered URI
         post_data["redirect_uri"] = self.client.default_redirect_uri
 
         response = self._post_request(post_data)
-        self.assertNotIn("invalid_client", response.content.decode("utf-8"))
+        assert "invalid_client" not in response.content.decode("utf-8")
 
     def test_request_methods(self):
         """
@@ -498,18 +500,16 @@ class TokenTestCase(TestCase):
         for request in requests:
             response = TokenView.as_view()(request)
 
-            self.assertEqual(
-                response.status_code,
-                405,
-                msg=request.method + " request does not return a 405 status.",
+            assert response.status_code == 405, (
+                request.method + " request does not return a 405 status."
             )
 
         request = self.factory.post(url)
 
         response = TokenView.as_view()(request)
 
-        self.assertEqual(
-            response.status_code, 400, msg=request.method + " request does not return a 400 status."
+        assert response.status_code == 400, (
+            request.method + " request does not return a 400 status."
         )
 
     def test_client_authentication(self):
@@ -527,10 +527,8 @@ class TokenTestCase(TestCase):
 
         response = self._post_request(post_data)
 
-        self.assertNotIn(
-            "invalid_client",
-            response.content.decode("utf-8"),
-            msg="Client authentication fails using request-body credentials.",
+        assert "invalid_client" not in response.content.decode("utf-8"), (
+            "Client authentication fails using request-body credentials."
         )
 
         # Now, test with an invalid client_id.
@@ -543,10 +541,8 @@ class TokenTestCase(TestCase):
 
         response = self._post_request(invalid_data)
 
-        self.assertIn(
-            "invalid_client",
-            response.content.decode("utf-8"),
-            msg='Client authentication success with an invalid "client_id".',
+        assert "invalid_client" in response.content.decode("utf-8"), (
+            'Client authentication success with an invalid "client_id".'
         )
 
         # Now, test using HTTP Basic Authentication method.
@@ -562,10 +558,8 @@ class TokenTestCase(TestCase):
         response = self._post_request(basicauth_data, self._password_grant_auth_header())
         response.content.decode("utf-8")
 
-        self.assertNotIn(
-            "invalid_client",
-            response.content.decode("utf-8"),
-            msg="Client authentication fails using HTTP Basic Auth.",
+        assert "invalid_client" not in response.content.decode("utf-8"), (
+            "Client authentication fails using HTTP Basic Auth."
         )
 
     def test_access_token_contains_nonce(self):
@@ -587,7 +581,7 @@ class TokenTestCase(TestCase):
         response_dic = json.loads(response.content.decode("utf-8"))
         id_token = jwt.decode(response_dic["id_token"], options={"verify_signature": False})
 
-        self.assertEqual(id_token.get("nonce"), FAKE_NONCE)
+        assert id_token.get("nonce") == FAKE_NONCE
 
         # Client does not supply a nonce parameter.
         code.nonce = ""
@@ -598,7 +592,7 @@ class TokenTestCase(TestCase):
 
         id_token = jwt.decode(response_dic["id_token"], options={"verify_signature": False})
 
-        self.assertEqual(id_token.get("nonce"), None)
+        assert id_token.get("nonce") is None
 
     def test_id_token_contains_at_hash(self):
         """
@@ -613,7 +607,7 @@ class TokenTestCase(TestCase):
         response_dic = json.loads(response.content.decode("utf-8"))
         id_token = jwt.decode(response_dic["id_token"], options={"verify_signature": False})
 
-        self.assertTrue(id_token.get("at_hash"))
+        assert id_token.get("at_hash")
 
     def test_idtoken_sign_validation(self):
         """
@@ -634,7 +628,7 @@ class TokenTestCase(TestCase):
     def test_idtoken_sign_validation_fail(self):
         bad_id_token = jwt.encode({"some": "payload"}, "wrong_key", algorithm="HS256")
 
-        with self.assertRaises(expected_exception=jwt.InvalidTokenError):
+        with pytest.raises():
             decode_id_token(bad_id_token, self.client)
 
     @override_settings(
@@ -653,7 +647,7 @@ class TokenTestCase(TestCase):
         response_dic = json.loads(response.content.decode("utf-8"))
         id_token = jwt.decode(response_dic["id_token"], options={"verify_signature": False})
 
-        self.assertEqual(id_token.get("sub"), self.user.email)
+        assert id_token.get("sub") == self.user.email
 
     @override_settings(
         OIDC_IDTOKEN_PROCESSING_HOOK=("oidc_provider.tests.app.utils.fake_idtoken_processing_hook",)
@@ -671,8 +665,8 @@ class TokenTestCase(TestCase):
         response_dic = json.loads(response.content.decode("utf-8"))
         id_token = jwt.decode(response_dic["id_token"], options={"verify_signature": False})
 
-        self.assertEqual(id_token.get("test_idtoken_processing_hook"), FAKE_RANDOM_STRING)
-        self.assertEqual(id_token.get("test_idtoken_processing_hook_user_email"), self.user.email)
+        assert id_token.get("test_idtoken_processing_hook") == FAKE_RANDOM_STRING
+        assert id_token.get("test_idtoken_processing_hook_user_email") == self.user.email
 
     @override_settings(
         OIDC_IDTOKEN_PROCESSING_HOOK=[
@@ -692,8 +686,8 @@ class TokenTestCase(TestCase):
         response_dic = json.loads(response.content.decode("utf-8"))
         id_token = jwt.decode(response_dic["id_token"], options={"verify_signature": False})
 
-        self.assertEqual(id_token.get("test_idtoken_processing_hook"), FAKE_RANDOM_STRING)
-        self.assertEqual(id_token.get("test_idtoken_processing_hook_user_email"), self.user.email)
+        assert id_token.get("test_idtoken_processing_hook") == FAKE_RANDOM_STRING
+        assert id_token.get("test_idtoken_processing_hook_user_email") == self.user.email
 
     @override_settings(
         OIDC_IDTOKEN_PROCESSING_HOOK=[
@@ -714,11 +708,11 @@ class TokenTestCase(TestCase):
         response_dic = json.loads(response.content.decode("utf-8"))
         id_token = jwt.decode(response_dic["id_token"], options={"verify_signature": False})
 
-        self.assertEqual(id_token.get("test_idtoken_processing_hook"), FAKE_RANDOM_STRING)
-        self.assertEqual(id_token.get("test_idtoken_processing_hook_user_email"), self.user.email)
+        assert id_token.get("test_idtoken_processing_hook") == FAKE_RANDOM_STRING
+        assert id_token.get("test_idtoken_processing_hook_user_email") == self.user.email
 
-        self.assertEqual(id_token.get("test_idtoken_processing_hook2"), FAKE_RANDOM_STRING)
-        self.assertEqual(id_token.get("test_idtoken_processing_hook_user_email2"), self.user.email)
+        assert id_token.get("test_idtoken_processing_hook2") == FAKE_RANDOM_STRING
+        assert id_token.get("test_idtoken_processing_hook_user_email2") == self.user.email
 
     @override_settings(
         OIDC_IDTOKEN_PROCESSING_HOOK=(
@@ -739,11 +733,11 @@ class TokenTestCase(TestCase):
         response_dic = json.loads(response.content.decode("utf-8"))
         id_token = jwt.decode(response_dic["id_token"], options={"verify_signature": False})
 
-        self.assertEqual(id_token.get("test_idtoken_processing_hook"), FAKE_RANDOM_STRING)
-        self.assertEqual(id_token.get("test_idtoken_processing_hook_user_email"), self.user.email)
+        assert id_token.get("test_idtoken_processing_hook") == FAKE_RANDOM_STRING
+        assert id_token.get("test_idtoken_processing_hook_user_email") == self.user.email
 
-        self.assertEqual(id_token.get("test_idtoken_processing_hook2"), FAKE_RANDOM_STRING)
-        self.assertEqual(id_token.get("test_idtoken_processing_hook_user_email2"), self.user.email)
+        assert id_token.get("test_idtoken_processing_hook2") == FAKE_RANDOM_STRING
+        assert id_token.get("test_idtoken_processing_hook_user_email2") == self.user.email
 
     @override_settings(
         OIDC_IDTOKEN_PROCESSING_HOOK=("oidc_provider.tests.app.utils.fake_idtoken_processing_hook3")
@@ -753,10 +747,12 @@ class TokenTestCase(TestCase):
         Test scope is available in OIDC_IDTOKEN_PROCESSING_HOOK.
         """
         id_token = self._request_id_token_with_scope(["openid", "email", "profile", "dummy"])
-        self.assertEqual(
-            id_token.get("scope_of_token_passed_to_processing_hook"),
-            ["openid", "email", "profile", "dummy"],
-        )
+        assert id_token.get("scope_of_token_passed_to_processing_hook") == [
+            "openid",
+            "email",
+            "profile",
+            "dummy",
+        ]
 
     @override_settings(
         OIDC_IDTOKEN_PROCESSING_HOOK=("oidc_provider.tests.app.utils.fake_idtoken_processing_hook4")
@@ -768,9 +764,9 @@ class TokenTestCase(TestCase):
         id_token = self._request_id_token_with_scope(["openid", "profile"])
         kwargs_passed = id_token.get("kwargs_passed_to_processing_hook")
         assert kwargs_passed
-        self.assertTrue(kwargs_passed.get("token").startswith("<Token: Some Client -"))
-        self.assertEqual(kwargs_passed.get("request"), "<WSGIRequest: POST '/openid/token'>")
-        self.assertEqual(set(kwargs_passed.keys()), {"token", "request"})
+        assert kwargs_passed.get("token").startswith("<Token: Some Client -")
+        assert kwargs_passed.get("request") == "<WSGIRequest: POST '/openid/token'>"
+        assert set(kwargs_passed.keys()) == {"token", "request"}
 
     def _request_id_token_with_scope(self, scope):
         code = self._create_code(scope)
@@ -806,7 +802,7 @@ class TokenTestCase(TestCase):
 
         response = self._post_request(post_data)
 
-        self.assertIn("access_token", json.loads(response.content.decode("utf-8")))
+        assert "access_token" in json.loads(response.content.decode("utf-8"))
 
     def test_pkce_missing_code_verifier(self):
         """
@@ -847,8 +843,8 @@ class TokenTestCase(TestCase):
 
         # Ensure access token exists in the response, also check if scopes are
         # the ones we registered previously.
-        self.assertTrue("access_token" in response_dict)
-        self.assertEqual(" ".join(fake_scopes_list), response_dict["scope"])
+        assert "access_token" in response_dict
+        assert " ".join(fake_scopes_list) == response_dict["scope"]
 
         access_token = response_dict["access_token"]
 
@@ -864,8 +860,8 @@ class TokenTestCase(TestCase):
         response = protected_api(request)
         response_dict = json.loads(response.content.decode("utf-8"))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue("protected" in response_dict)
+        assert response.status_code == 200
+        assert "protected" in response_dict
 
         # Protected resource test ends here.
 
@@ -876,9 +872,9 @@ class TokenTestCase(TestCase):
             data={"token": access_token},
             **self._password_grant_auth_header(),
         )
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         response_dict = json.loads(response.content.decode("utf-8"))
-        self.assertTrue(response_dict.get("active"))
+        assert response_dict.get("active")
 
         # End token introspection test
 
@@ -890,8 +886,8 @@ class TokenTestCase(TestCase):
         response_dict = json.loads(response.content.decode("utf-8"))
 
         # It should fail when client does not have any scope added.
-        self.assertEqual(400, response.status_code)
-        self.assertEqual("invalid_scope", response_dict["error"])
+        assert response.status_code == 400
+        assert response_dict["error"] == "invalid_scope"
 
     def test_printing_token_used_by_client_credentials_grant_type(self):
         # Add scope for this client.
@@ -901,7 +897,7 @@ class TokenTestCase(TestCase):
         response = self._post_request(self._client_credentials_post_data())
         response_dict = json.loads(response.content.decode("utf-8"))
         token = Token.objects.get(access_token=response_dict["access_token"])
-        self.assertTrue(str(token))
+        assert str(token)
 
     @override_settings(OIDC_GRANT_TYPE_PASSWORD_ENABLE=True)
     def test_requested_scope(self):
@@ -914,8 +910,8 @@ class TokenTestCase(TestCase):
         response_dict = json.loads(response.content.decode("utf-8"))
 
         # It should fail when client requested an invalid scope.
-        self.assertEqual(400, response.status_code)
-        self.assertEqual("invalid_scope", response_dict["error"])
+        assert response.status_code == 400
+        assert response_dict["error"] == "invalid_scope"
 
         # happy path: no scope
         response = self._post_request(
@@ -923,8 +919,8 @@ class TokenTestCase(TestCase):
         )
 
         response_dict = json.loads(response.content.decode("utf-8"))
-        self.assertEqual(200, response.status_code)
-        self.assertEqual(TokenTestCase.SCOPE, response_dict["scope"])
+        assert response.status_code == 200
+        assert TokenTestCase.SCOPE == response_dict["scope"]
 
         # happy path: single scope
         response = self._post_request(
@@ -933,8 +929,8 @@ class TokenTestCase(TestCase):
         )
 
         response_dict = json.loads(response.content.decode("utf-8"))
-        self.assertEqual(200, response.status_code)
-        self.assertEqual("email", response_dict["scope"])
+        assert response.status_code == 200
+        assert response_dict["scope"] == "email"
 
         # happy path: multiple scopes
         response = self._post_request(
@@ -944,8 +940,8 @@ class TokenTestCase(TestCase):
 
         # GRANT_TYPE=CLIENT_CREDENTIALS
         response_dict = json.loads(response.content.decode("utf-8"))
-        self.assertEqual(200, response.status_code)
-        self.assertEqual("email openid", response_dict["scope"])
+        assert response.status_code == 200
+        assert response_dict["scope"] == "email openid"
 
         response = self._post_request(
             post_data=self._client_credentials_post_data(["openid", "invalid_scope"])
@@ -954,22 +950,22 @@ class TokenTestCase(TestCase):
         response_dict = json.loads(response.content.decode("utf-8"))
 
         # It should fail when client requested an invalid scope.
-        self.assertEqual(400, response.status_code)
-        self.assertEqual("invalid_scope", response_dict["error"])
+        assert response.status_code == 400
+        assert response_dict["error"] == "invalid_scope"
 
         # happy path: no scope
         response = self._post_request(post_data=self._client_credentials_post_data())
 
         response_dict = json.loads(response.content.decode("utf-8"))
-        self.assertEqual(200, response.status_code)
-        self.assertEqual(TokenTestCase.SCOPE, response_dict["scope"])
+        assert response.status_code == 200
+        assert TokenTestCase.SCOPE == response_dict["scope"]
 
         # happy path: single scope
         response = self._post_request(post_data=self._client_credentials_post_data(["email"]))
 
         response_dict = json.loads(response.content.decode("utf-8"))
-        self.assertEqual(200, response.status_code)
-        self.assertEqual("email", response_dict["scope"])
+        assert response.status_code == 200
+        assert response_dict["scope"] == "email"
 
         # happy path: multiple scopes
         response = self._post_request(
@@ -977,8 +973,8 @@ class TokenTestCase(TestCase):
         )
 
         response_dict = json.loads(response.content.decode("utf-8"))
-        self.assertEqual(200, response.status_code)
-        self.assertEqual("email openid", response_dict["scope"])
+        assert response.status_code == 200
+        assert response_dict["scope"] == "email openid"
 
 
 class JwksTestCase(TestCase):
@@ -999,12 +995,12 @@ class JwksTestCase(TestCase):
         request = self.factory.get(reverse("oidc_provider:jwks"))
         response = JwksView.as_view()(request)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Content-Type"], "application/json")
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/json"
 
         # Should be able to parse as JSON
         jwks_data = json.loads(response.content.decode("utf-8"))
-        self.assertIsInstance(jwks_data, dict)
+        assert isinstance(jwks_data, dict)
 
     def test_jwks_contains_required_fields(self):
         """Test that JWKS response contains the required JWK fields."""
@@ -1013,22 +1009,28 @@ class JwksTestCase(TestCase):
         jwks_data = json.loads(response.content.decode("utf-8"))
 
         # Should have 'keys' array
-        self.assertIn("keys", jwks_data)
-        self.assertIsInstance(jwks_data["keys"], list)
-        self.assertGreater(len(jwks_data["keys"]), 0)
+        assert "keys" in jwks_data
+        assert isinstance(jwks_data["keys"], list)
+        assert len(jwks_data["keys"]) > 0
 
         # Each key should have required JWK fields
         for key in jwks_data["keys"]:
-            self.assertIn("kty", key)  # Key type
-            self.assertIn("use", key)  # Key use
-            self.assertIn("kid", key)  # Key ID
-            self.assertIn("n", key)  # RSA modulus
-            self.assertIn("e", key)  # RSA exponent
-            self.assertIn("alg", key)  # Algorithm
+            assert "kty" in key
+            # Key type
+            assert "use" in key
+            # Key use
+            assert "kid" in key
+            # Key ID
+            assert "n" in key
+            # RSA modulus
+            assert "e" in key
+            # RSA exponent
+            assert "alg" in key
+            # Algorithm
 
             # Should be RSA key for signing
-            self.assertEqual(key["kty"], "RSA")
-            self.assertEqual(key["use"], "sig")
+            assert key["kty"] == "RSA"
+            assert key["use"] == "sig"
 
     def test_jwks_keys_work_with_pyjwt(self):
         """Test that keys from JWKS endpoint work with PyJWT for verification."""
@@ -1071,8 +1073,8 @@ class JwksTestCase(TestCase):
             },
         )
 
-        self.assertEqual(decoded["sub"], "123")
-        self.assertEqual(decoded["aud"], self.client.client_id)
+        assert decoded["sub"] == "123"
+        assert decoded["aud"] == self.client.client_id
 
     def test_jwks_integration_with_token_validation(self):
         """Test that JWKS keys can be used to validate actual ID tokens."""
@@ -1084,13 +1086,13 @@ class JwksTestCase(TestCase):
         client_keys = get_client_alg_keys(self.client)
 
         # Should have keys from both methods
-        self.assertGreater(len(jwks_data["keys"]), 0)
-        self.assertGreater(len(client_keys), 0)
+        assert len(jwks_data["keys"]) > 0
+        assert len(client_keys) > 0
 
         # The kid should match between JWKS and client keys
         jwks_kids = {key["kid"] for key in jwks_data["keys"]}
         client_kids = {key["kid"] for key in client_keys}
-        self.assertEqual(jwks_kids, client_kids)
+        assert jwks_kids == client_kids
 
 
 class RSAKeyCachingTestCase(TestCase):
@@ -1124,7 +1126,7 @@ class RSAKeyCachingTestCase(TestCase):
         self.token_utils._rsa_key_cache.clear()
 
         # Ensure cache is empty
-        self.assertEqual(len(self.token_utils._rsa_key_cache), 0)
+        assert len(self.token_utils._rsa_key_cache) == 0
 
         # First call should populate cache (slower)
         start_time = time.time()
@@ -1132,8 +1134,8 @@ class RSAKeyCachingTestCase(TestCase):
         first_call_time = time.time() - start_time
 
         # Cache should now have entries
-        self.assertGreater(len(self.token_utils._rsa_key_cache), 0)
-        self.assertGreater(len(keys1), 0)
+        assert len(self.token_utils._rsa_key_cache) > 0
+        assert len(keys1) > 0
 
         # Second call should use cache (much faster)
         start_time = time.time()
@@ -1141,13 +1143,13 @@ class RSAKeyCachingTestCase(TestCase):
         second_call_time = time.time() - start_time
 
         # Results should be identical
-        self.assertEqual(len(keys1), len(keys2))
-        self.assertEqual(keys1[0]["kid"], keys2[0]["kid"])
-        self.assertEqual(keys1[0]["algorithm"], keys2[0]["algorithm"])
+        assert len(keys1) == len(keys2)
+        assert keys1[0]["kid"] == keys2[0]["kid"]
+        assert keys1[0]["algorithm"] == keys2[0]["algorithm"]
 
         # Second call should be significantly faster (cache hit)
         # Note: This is a rough performance test, actual speedup is ~1000x
-        self.assertLess(second_call_time, first_call_time * 0.5)
+        assert second_call_time < (first_call_time * 0.5)
 
     def test_rsa_key_cache_cleanup_on_key_deletion(self):
         """Test that cache is cleaned up when RSA keys are deleted from DB."""
@@ -1156,8 +1158,8 @@ class RSAKeyCachingTestCase(TestCase):
         initial_cache_size = len(self.token_utils._rsa_key_cache)
         initial_key_count = len(keys_before)
 
-        self.assertGreater(initial_cache_size, 0)
-        self.assertGreater(initial_key_count, 0)
+        assert initial_cache_size > 0
+        assert initial_key_count > 0
 
         # Manually add a fake cache entry to simulate a deleted key
         fake_cache_key = "rsa_key_fake_deleted_key"
@@ -1167,36 +1169,36 @@ class RSAKeyCachingTestCase(TestCase):
         }
 
         # Cache should now have the fake entry
-        self.assertEqual(len(self.token_utils._rsa_key_cache), initial_cache_size + 1)
-        self.assertIn(fake_cache_key, self.token_utils._rsa_key_cache)
+        assert len(self.token_utils._rsa_key_cache) == (initial_cache_size + 1)
+        assert fake_cache_key in self.token_utils._rsa_key_cache
 
         # Call get_client_alg_keys again - should clean up the fake entry
         keys_after = self.token_utils.get_client_alg_keys(self.client)
 
         # Cache should be cleaned up
-        self.assertEqual(len(self.token_utils._rsa_key_cache), initial_cache_size)
-        self.assertNotIn(fake_cache_key, self.token_utils._rsa_key_cache)
+        assert len(self.token_utils._rsa_key_cache) == initial_cache_size
+        assert fake_cache_key not in self.token_utils._rsa_key_cache
 
         # Key results should be unchanged
-        self.assertEqual(len(keys_after), initial_key_count)
+        assert len(keys_after) == initial_key_count
 
     def test_rsa_key_cache_cleanup_on_all_keys_deleted(self):
         """Test that cache is completely cleaned when all RSA keys are deleted."""
         # Load keys into cache
         self.token_utils.get_client_alg_keys(self.client)
-        self.assertGreater(len(self.token_utils._rsa_key_cache), 0)
+        assert len(self.token_utils._rsa_key_cache) > 0
 
         # Delete all RSA keys from database
         RSAKey.objects.all().delete()
 
         # Calling get_client_alg_keys should raise exception and clean cache
-        with self.assertRaises(Exception) as context:
+        with pytest.raises(Exception) as context:
             self.token_utils.get_client_alg_keys(self.client)
 
-        self.assertIn("You must add at least one RSA Key", str(context.exception))
+        assert "You must add at least one RSA Key" in str(context.exception)
 
         # Cache should be completely empty
-        self.assertEqual(len(self.token_utils._rsa_key_cache), 0)
+        assert len(self.token_utils._rsa_key_cache) == 0
 
     def test_rsa_key_cache_with_multiple_keys(self):
         """Test caching behavior with multiple RSA keys."""
@@ -1206,40 +1208,42 @@ class RSAKeyCachingTestCase(TestCase):
 
         # Should now have multiple keys
         all_keys = RSAKey.objects.all()
-        self.assertGreater(len(all_keys), 1)
+        assert len(all_keys) > 1
 
         # Load keys into cache
         client_keys = self.token_utils.get_client_alg_keys(self.client)
 
         # Cache should have entries for all keys
-        self.assertEqual(len(self.token_utils._rsa_key_cache), len(all_keys))
-        self.assertEqual(len(client_keys), len(all_keys))
+        assert len(self.token_utils._rsa_key_cache) == len(all_keys)
+        assert len(client_keys) == len(all_keys)
 
         # All keys should be properly structured
         for key_info in client_keys:
-            self.assertIn("key", key_info)  # private key
-            self.assertIn("public_key", key_info)  # public key
-            self.assertIn("kid", key_info)
-            self.assertIn("algorithm", key_info)
-            self.assertEqual(key_info["algorithm"], "RS256")
+            assert "key" in key_info
+            # private key
+            assert "public_key" in key_info
+            # public key
+            assert "kid" in key_info
+            assert "algorithm" in key_info
+            assert key_info["algorithm"] == "RS256"
 
     def test_rsa_key_cache_clear_function(self):
         """Test the manual cache clear function."""
         # Load keys into cache
         self.token_utils.get_client_alg_keys(self.client)
 
-        self.assertGreater(len(self.token_utils._rsa_key_cache), 0)
+        assert len(self.token_utils._rsa_key_cache) > 0
 
         # Clear cache manually
         self.token_utils._rsa_key_cache.clear()
 
         # Cache should be empty
-        self.assertEqual(len(self.token_utils._rsa_key_cache), 0)
+        assert len(self.token_utils._rsa_key_cache) == 0
 
         # Should be able to load keys again
         keys = self.token_utils.get_client_alg_keys(self.client)
-        self.assertGreater(len(keys), 0)
-        self.assertGreater(len(self.token_utils._rsa_key_cache), 0)
+        assert len(keys) > 0
+        assert len(self.token_utils._rsa_key_cache) > 0
 
     def test_rsa_key_cache_contains_correct_key_types(self):
         """Test that cached keys contain the correct cryptography key objects."""
@@ -1248,12 +1252,12 @@ class RSAKeyCachingTestCase(TestCase):
 
         # Check that cache contains proper key objects
         for cache_key, key_pair in self.token_utils._rsa_key_cache.items():
-            self.assertIn("private_key", key_pair)
-            self.assertIn("public_key", key_pair)
+            assert "private_key" in key_pair
+            assert "public_key" in key_pair
 
             # Should be actual cryptography key objects
-            self.assertIsInstance(key_pair["private_key"], RSAPrivateKey)
-            self.assertIsInstance(key_pair["public_key"], RSAPublicKey)
+            assert isinstance(key_pair["private_key"], RSAPrivateKey)
+            assert isinstance(key_pair["public_key"], RSAPublicKey)
 
         # Check that client keys reference the same objects
         for key_info in client_keys:
@@ -1261,8 +1265,8 @@ class RSAKeyCachingTestCase(TestCase):
             cached_pair = self.token_utils._rsa_key_cache[cache_key]
 
             # Should be the exact same objects (not copies)
-            self.assertIs(key_info["key"], cached_pair["private_key"])
-            self.assertIs(key_info["public_key"], cached_pair["public_key"])
+            assert key_info["key"] is cached_pair["private_key"]
+            assert key_info["public_key"] is cached_pair["public_key"]
 
     def test_hs256_no_caching(self):
         """Test that HS256 clients don't use RSA key caching."""
@@ -1278,14 +1282,15 @@ class RSAKeyCachingTestCase(TestCase):
         hs256_keys = self.token_utils.get_client_alg_keys(hs256_client)
 
         # Should have keys but no cache entries (HS256 doesn't use caching)
-        self.assertEqual(len(hs256_keys), 1)
-        self.assertEqual(hs256_keys[0]["algorithm"], "HS256")
+        assert len(hs256_keys) == 1
+        assert hs256_keys[0]["algorithm"] == "HS256"
 
-        self.assertEqual(len(self.token_utils._rsa_key_cache), 0)  # No RSA caching for HS256
+        assert len(self.token_utils._rsa_key_cache) == 0
+        # No RSA caching for HS256
 
         # Get keys for RS256 client
         rs256_keys = self.token_utils.get_client_alg_keys(self.client)
 
         # Now should have cache entries for RS256
-        self.assertEqual(rs256_keys[0]["algorithm"], "RS256")
-        self.assertGreater(len(self.token_utils._rsa_key_cache), 0)
+        assert rs256_keys[0]["algorithm"] == "RS256"
+        assert len(self.token_utils._rsa_key_cache) > 0

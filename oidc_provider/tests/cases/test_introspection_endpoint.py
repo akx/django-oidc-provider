@@ -46,11 +46,11 @@ class IntrospectionTestCase(TestCase):
         self.token.save()
 
     def _assert_inactive(self, response):
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         self.assertJSONEqual(force_str(response.content), {"active": False})
 
     def _assert_active(self, response, **kwargs):
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         expected_content = {
             "active": True,
             "aud": self.aud,
@@ -130,7 +130,7 @@ class IntrospectionTestCase(TestCase):
         self.resource.scope = ["token_introspection"]
         self.resource.save()
         response = self._make_request()
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         self.assertJSONEqual(
             force_str(response.content),
             {

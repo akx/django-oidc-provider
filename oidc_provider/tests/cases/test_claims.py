@@ -22,10 +22,10 @@ class ClaimsTestCase(TestCase):
 
     def test_empty_standard_claims(self):
         for v in [v for k, v in STANDARD_CLAIMS.items() if k != "address"]:
-            self.assertEqual(v, "")
+            assert v == ""
 
         for v in STANDARD_CLAIMS["address"].values():
-            self.assertEqual(v, "")
+            assert v == ""
 
     def test_clean_dic(self):
         """assert that _clean_dic function returns a clean dictionnary
@@ -52,19 +52,16 @@ class ClaimsTestCase(TestCase):
             "phone_number": "",
         }
         clean_dict = self.scopeClaims._clean_dic(dict_to_clean)
-        self.assertEqual(
-            clean_dict,
-            {
-                "family_name": "Doe",
-                "given_name": "John",
-                "name": "John Doe",
-                "email": "johndoe@example.com",
-            },
-        )
+        assert clean_dict == {
+            "family_name": "Doe",
+            "given_name": "John",
+            "name": "John Doe",
+            "email": "johndoe@example.com",
+        }
 
     def test_locale(self):
         with override_language("fr"):
-            self.assertEqual(text_type(StandardScopeClaims.info_profile[0]), "Profil de base")
+            assert text_type(StandardScopeClaims.info_profile[0]) == "Profil de base"
 
     def test_scopeclaims_class_inheritance(self):
         # Generate example class that will be used for `OIDC_EXTRA_SCOPE_CLAIMS` setting.
@@ -84,5 +81,5 @@ class ClaimsTestCase(TestCase):
         claims = CustomScopeClaims(self.token)
         response = claims.create_response_dic()
 
-        self.assertTrue("test" in response.keys())
-        self.assertFalse("notadd" in response.keys())
+        assert "test" in response.keys()
+        assert not ("notadd" in response.keys())

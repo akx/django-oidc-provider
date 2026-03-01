@@ -47,10 +47,10 @@ class EndSessionTestCase(TestCase):
     def test_id_token_hint_not_present_user_prompted(self):
         response = self.client.get(self.url)
         # We should display a logout consent prompt if id_token_hint parameter is not present.
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.headers["Location"], self.url_prompt)
+        assert response.status_code == 302
+        assert response.headers["Location"] == self.url_prompt
         # User still logged in.
-        self.assertIn("_auth_user_id", self.client.session)
+        assert "_auth_user_id" in self.client.session
 
     @patch("oidc_provider.views.after_end_session_hook")
     def test_id_token_hint_is_present_user_redirected_to_client_logout_url(
@@ -61,13 +61,13 @@ class EndSessionTestCase(TestCase):
         }
         response = self.client.get(self.url, query_params)
         # ID Token is valid so user was redirected to registered uri.
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.headers["Location"], self.url_logout)
+        assert response.status_code == 302
+        assert response.headers["Location"] == self.url_logout
         # User logged out.
-        self.assertNotIn("_auth_user_id", self.client.session)
+        assert "_auth_user_id" not in self.client.session
         # End session hook should be called.
-        self.assertTrue(after_end_session_hook.called)
-        self.assertTrue(after_end_session_hook.call_count == 1)
+        assert after_end_session_hook.called
+        assert after_end_session_hook.call_count == 1
 
     @patch("oidc_provider.views.after_end_session_hook")
     def test_id_token_hint_is_present_user_redirected_to_client_logout_url_with_post(
@@ -78,13 +78,13 @@ class EndSessionTestCase(TestCase):
         }
         response = self.client.post(self.url, data)
         # ID Token is valid so user was
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.headers["Location"], self.url_logout)
+        assert response.status_code == 302
+        assert response.headers["Location"] == self.url_logout
         # User logged out.
-        self.assertNotIn("_auth_user_id", self.client.session)
+        assert "_auth_user_id" not in self.client.session
         # End session hook should be called.
-        self.assertTrue(after_end_session_hook.called)
-        self.assertTrue(after_end_session_hook.call_count == 1)
+        assert after_end_session_hook.called
+        assert after_end_session_hook.call_count == 1
 
     def test_state_is_present_and_being_passed_to_logout_url(self):
         query_params = {
@@ -93,10 +93,8 @@ class EndSessionTestCase(TestCase):
         }
         response = self.client.get(self.url, query_params)
         # Let's ensure state is being passed to the logout url.
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(
-            response.headers["Location"], "{0}?state={1}".format(self.url_logout, "ABCDE")
-        )
+        assert response.status_code == 302
+        assert response.headers["Location"] == "{0}?state={1}".format(self.url_logout, "ABCDE")
 
     def test_post_logout_uri_not_in_client_urls(self):
         query_params = {
@@ -106,10 +104,9 @@ class EndSessionTestCase(TestCase):
         response = self.client.get(self.url, query_params)
         # We prompt the user since the post logout url is not from client urls.
         # Also ensure client_id is present since we could validate id_token_hint.
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(
-            response.headers["Location"],
-            "{0}?client_id={1}".format(self.url_prompt, self.oidc_client.client_id),
+        assert response.status_code == 302
+        assert response.headers["Location"] == "{0}?client_id={1}".format(
+            self.url_prompt, self.oidc_client.client_id
         )
 
     def test_prompt_view_redirecting_to_client_post_logout_since_user_unauthenticated(self):
@@ -120,8 +117,8 @@ class EndSessionTestCase(TestCase):
         response = self.client.get(self.url_prompt, query_params)
         # Since user is unauthenticated on the backend, we send it back to client post logout
         # registered uri.
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.headers["Location"], self.url_logout)
+        assert response.status_code == 302
+        assert response.headers["Location"] == self.url_logout
 
     def test_prompt_view_show_completed_since_user_unauthenticated_and_no_client(self):
         self.client.logout()
@@ -160,7 +157,7 @@ class EndSessionTestCase(TestCase):
 
     @patch("oidc_provider.views.after_end_session_hook")
     def test_prompt_view_user_logged_out_after_form_allowed(self, after_end_session_hook):
-        self.assertIn("_auth_user_id", self.client.session)
+        assert "_auth_user_id" in self.client.session
         # We want to POST to /end-session-prompt/?client_id=ABC endpoint.
         url_prompt_with_client = (
             self.url_prompt
@@ -176,16 +173,16 @@ class EndSessionTestCase(TestCase):
         }
         response = self.client.post(url_prompt_with_client, data)
         # Ensure user is now logged out and redirected to client post logout uri.
-        self.assertNotIn("_auth_user_id", self.client.session)
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.headers["Location"], self.url_logout)
+        assert "_auth_user_id" not in self.client.session
+        assert response.status_code == 302
+        assert response.headers["Location"] == self.url_logout
         # End session hook should be called.
-        self.assertTrue(after_end_session_hook.called)
-        self.assertTrue(after_end_session_hook.call_count == 1)
+        assert after_end_session_hook.called
+        assert after_end_session_hook.call_count == 1
 
     @patch("oidc_provider.views.after_end_session_hook")
     def test_prompt_view_user_logged_out_after_form_not_allowed(self, after_end_session_hook):
-        self.assertIn("_auth_user_id", self.client.session)
+        assert "_auth_user_id" in self.client.session
         # We want to POST to /end-session-prompt/?client_id=ABC endpoint.
         url_prompt_with_client = (
             self.url_prompt
@@ -198,20 +195,20 @@ class EndSessionTestCase(TestCase):
         )
         response = self.client.post(url_prompt_with_client)  # No data.
         # Ensure user is still logged in and redirected to client post logout uri.
-        self.assertIn("_auth_user_id", self.client.session)
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.headers["Location"], self.url_logout)
+        assert "_auth_user_id" in self.client.session
+        assert response.status_code == 302
+        assert response.headers["Location"] == self.url_logout
         # End session hook should not be called.
-        self.assertFalse(after_end_session_hook.called)
+        assert not after_end_session_hook.called
 
     @patch("oidc_provider.views.after_end_session_hook")
     def test_prompt_view_user_still_logged_in_after_form_not_allowed_no_client(
         self, after_end_session_hook
     ):
-        self.assertIn("_auth_user_id", self.client.session)
+        assert "_auth_user_id" in self.client.session
         response = self.client.post(self.url_prompt)  # No data.
         # Ensure user is still logged in and 404 NOT FOUND was raised.
-        self.assertIn("_auth_user_id", self.client.session)
+        assert "_auth_user_id" in self.client.session
         self.assertContains(
             response,
             "You can now close this window.",
@@ -219,4 +216,4 @@ class EndSessionTestCase(TestCase):
             html=True,
         )
         # End session hook should not be called.
-        self.assertFalse(after_end_session_hook.called)
+        assert not after_end_session_hook.called

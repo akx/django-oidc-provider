@@ -38,23 +38,23 @@ class CommonTest(TestCase):
         request = Request()
 
         # from default settings
-        self.assertEqual(get_issuer(), "http://localhost:8000/openid")
+        assert get_issuer() == "http://localhost:8000/openid"
 
         # from custom settings
         with self.settings(SITE_URL="http://otherhost:8000"):
-            self.assertEqual(get_issuer(), "http://otherhost:8000/openid")
+            assert get_issuer() == "http://otherhost:8000/openid"
 
         # `SITE_URL` not set, from `request`
         with self.settings(SITE_URL=""):
-            self.assertEqual(get_issuer(request=request), "http://host-from-request:8888/openid")
+            assert get_issuer(request=request) == "http://host-from-request:8888/openid"
 
         # use settings first if both are provided
-        self.assertEqual(get_issuer(request=request), "http://localhost:8000/openid")
+        assert get_issuer(request=request) == "http://localhost:8000/openid"
 
         # `site_url` can even be overridden manually
-        self.assertEqual(
-            get_issuer(site_url="http://127.0.0.1:9000", request=request),
-            "http://127.0.0.1:9000/openid",
+        assert (
+            get_issuer(site_url="http://127.0.0.1:9000", request=request)
+            == "http://127.0.0.1:9000/openid"
         )
 
 
@@ -76,30 +76,28 @@ class TokenTest(TestCase):
         token = create_token(self.user, client, [])
         id_token_data = create_id_token(token=token, user=self.user, aud="test-aud")
         iat = id_token_data["iat"]
-        self.assertEqual(type(iat), int)
-        self.assertGreaterEqual(iat, start_time)
-        self.assertLessEqual(iat - start_time, 5)  # Can't take more than 5 s
-        self.assertEqual(
-            id_token_data,
-            {
-                "aud": "test-aud",
-                "auth_time": login_timestamp,
-                "exp": iat + 600,
-                "iat": iat,
-                "iss": "http://localhost:8000/openid",
-                "sub": str(self.user.id),
-            },
-        )
+        assert type(iat) == int
+        assert iat >= start_time
+        assert (iat - start_time) <= 5
+        # Can't take more than 5 s
+        assert id_token_data == {
+            "aud": "test-aud",
+            "auth_time": login_timestamp,
+            "exp": (iat + 600),
+            "iat": iat,
+            "iss": "http://localhost:8000/openid",
+            "sub": str(self.user.id),
+        }
 
     @override_settings(OIDC_IDTOKEN_INCLUDE_CLAIMS=True)
     def test_create_id_token_with_include_claims_setting(self):
         client = create_fake_client("code")
         token = create_token(self.user, client, scope=["openid", "email"])
         id_token_data = create_id_token(token=token, user=self.user, aud="test-aud")
-        self.assertIn("email", id_token_data)
-        self.assertTrue(id_token_data["email"])
-        self.assertIn("email_verified", id_token_data)
-        self.assertTrue(id_token_data["email_verified"])
+        assert "email" in id_token_data
+        assert id_token_data["email"]
+        assert "email_verified" in id_token_data
+        assert id_token_data["email_verified"]
 
     @override_settings(
         OIDC_IDTOKEN_INCLUDE_CLAIMS=True,
@@ -110,13 +108,13 @@ class TokenTest(TestCase):
         token = create_token(self.user, client, scope=["openid", "email", "pizza"])
         id_token_data = create_id_token(token=token, user=self.user, aud="test-aud")
         # Standard claims included.
-        self.assertIn("email", id_token_data)
-        self.assertTrue(id_token_data["email"])
-        self.assertIn("email_verified", id_token_data)
-        self.assertTrue(id_token_data["email_verified"])
+        assert "email" in id_token_data
+        assert id_token_data["email"]
+        assert "email_verified" in id_token_data
+        assert id_token_data["email_verified"]
         # Extra claims included.
-        self.assertIn("pizza", id_token_data)
-        self.assertEqual(id_token_data["pizza"], "Margherita")
+        assert "pizza" in id_token_data
+        assert id_token_data["pizza"] == "Margherita"
 
     def test_token_saving_id_token_with_non_serialized_objects(self):
         client = create_fake_client("code")
@@ -137,10 +135,10 @@ class TokenTest(TestCase):
         token.save()
 
         # A raw datetime/date object should be serialized.
-        self.assertEqual(token.id_token["_extra_datetime"], "2002-10-15 09:00:00")
-        self.assertEqual(token.id_token["_extra_date"], "2000-12-25")
+        assert token.id_token["_extra_datetime"] == "2002-10-15 09:00:00"
+        assert token.id_token["_extra_date"] == "2000-12-25"
         # Even a raw object should be serialized wit str() at least.
-        self.assertEqual(token.id_token["_extra_object"], "<class 'object'>")
+        assert token.id_token["_extra_object"] == "<class 'object'>"
 
 
 class BrowserStateTest(TestCase):
@@ -149,13 +147,13 @@ class BrowserStateTest(TestCase):
         request = HttpRequest()
         request.session = Mock(session_key=None)
         state = get_browser_state_or_default(request)
-        self.assertEqual(state, sha224("my_static_key".encode("utf-8")).hexdigest())
+        assert state == sha224("my_static_key".encode("utf-8")).hexdigest()
 
     def test_get_browser_state_uses_session_key_to_calculate_browser_state_if_available(self):
         request = HttpRequest()
         request.session = Mock(session_key="my_session_key")
         state = get_browser_state_or_default(request)
-        self.assertEqual(state, sha224("my_session_key".encode("utf-8")).hexdigest())
+        assert state == sha224("my_session_key".encode("utf-8")).hexdigest()
 
 
 class SanitizationTest(TestCase):
@@ -167,51 +165,52 @@ class SanitizationTest(TestCase):
         """Test that null bytes are removed from client_id."""
         client_id = "Hello\x00World"
         result = sanitize_client_id(client_id)
-        self.assertEqual(result, "HelloWorld")
+        assert result == "HelloWorld"
 
     def test_sanitize_client_id_removes_control_characters(self):
         """Test that various control characters are removed."""
         client_id = "client\x01\x02\x03\x1f\x7fid"
         result = sanitize_client_id(client_id)
-        self.assertEqual(result, "clientid")
+        assert result == "clientid"
 
     def test_sanitize_client_id_preserves_valid_characters(self):
         """Test that valid visible ASCII characters are preserved."""
         client_id = "valid-client_123.abc!@#$%^&*()+={}[]|\\:;\"'<>?,./~`"
         result = sanitize_client_id(client_id)
-        self.assertEqual(result, client_id)  # Should remain unchanged
+        assert result == client_id
+        # Should remain unchanged
 
     def test_sanitize_client_id_handles_empty_string(self):
         """Test that empty string returns empty string."""
         result = sanitize_client_id("")
-        self.assertEqual(result, "")
+        assert result == ""
 
     def test_sanitize_client_id_handles_none(self):
         """Test that None returns empty string."""
         result = sanitize_client_id(None)
-        self.assertEqual(result, "")
+        assert result == ""
 
     def test_sanitize_client_id_removes_whitespace_characters(self):
         """Test that whitespace characters are removed (not part of VCHAR)."""
         client_id = "client\t\n\r id"
         result = sanitize_client_id(client_id)
-        self.assertEqual(result, "clientid")
+        assert result == "clientid"
 
     def test_sanitize_client_id_preserves_printable_ascii(self):
         """Test preservation of all printable ASCII characters (0x21-0x7E)."""
         # All VCHAR characters as per RFC 6749
         vchar_string = "".join(chr(i) for i in range(0x21, 0x7F))
         result = sanitize_client_id(vchar_string)
-        self.assertEqual(result, vchar_string)
+        assert result == vchar_string
 
     def test_sanitize_client_id_removes_unicode_characters(self):
         """Test that Unicode characters outside ASCII range are removed."""
         client_id = "client-ñáéíóú-测试-🔥"
         result = sanitize_client_id(client_id)
-        self.assertEqual(result, "client---")
+        assert result == "client---"
 
     def test_sanitize_client_id_mixed_valid_invalid(self):
         """Test mixed valid and invalid characters."""
         client_id = "valid\x00client\x01-\x7f123\tabc"
         result = sanitize_client_id(client_id)
-        self.assertEqual(result, "validclient-123abc")
+        assert result == "validclient-123abc"

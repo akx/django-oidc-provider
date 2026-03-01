@@ -35,9 +35,9 @@ class ProviderInfoTestCase(TestCase):
         # Caching not available by default.
         build_cache_key.assert_not_called()
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Content-Type"] == "application/json", True)
-        self.assertEqual(bool(response.content), True)
+        assert response.status_code == 200
+        assert (response["Content-Type"] == "application/json") is True
+        assert bool(response.content) is True
 
     @override_settings(OIDC_DISCOVERY_CACHE_ENABLE=True)
     @patch("oidc_provider.views.ProviderInfoView._build_cache_key")
@@ -52,12 +52,12 @@ class ProviderInfoTestCase(TestCase):
         request = self.factory.get(url)
 
         response = ProviderInfoView.as_view()(request)
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         build_cache_key.assert_called_once()
 
         assert "authorization_endpoint" in cache.get("key")
 
         response = ProviderInfoView.as_view()(request)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Content-Type"] == "application/json", True)
-        self.assertEqual(bool(response.content), True)
+        assert response.status_code == 200
+        assert (response["Content-Type"] == "application/json") is True
+        assert bool(response.content) is True
